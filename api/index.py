@@ -17,8 +17,10 @@ class handler(BaseHTTPRequestHandler):
                 "health": "/api/health",
                 "jwt_test": "/api/jwt",
                 "oauth_test": "/api/oauth",
-                "models_test": "/api/models",
-                "full_auth": "/api/auth"
+                "full_auth": "/api/auth",
+                "email_integration": "/api/email",
+                "linkedin_publishing": "/api/linkedin",
+                "ai_processing": "/api/ai"
             }
         }
         
