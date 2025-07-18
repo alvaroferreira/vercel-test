@@ -40,14 +40,17 @@ class handler(BaseHTTPRequestHandler):
                 "payload": payload,
                 "decoded": decoded,
                 "token_length": len(token),
-                "secret_used": "vercel-secret-key-123"
+                "secret_used": "vercel-secret-key-123",
+                "dependencies_working": True
             }
             
-        except ImportError:
+        except ImportError as e:
             response = {
-                "message": "❌ PyJWT não está instalado",
-                "error": "Module 'jwt' not found",
-                "solution": "Adicionar PyJWT ao requirements.txt"
+                "message": "❌ PyJWT não está instalado no Vercel",
+                "error": str(e),
+                "solution": "Vercel needs to install PyJWT from requirements.txt",
+                "requirements_file": "requirements.txt exists with PyJWT==2.8.0",
+                "dependencies_working": False
             }
         except Exception as e:
             response = {
