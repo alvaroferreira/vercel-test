@@ -2,6 +2,9 @@ from http.server import BaseHTTPRequestHandler
 import json
 import datetime
 import os
+import base64
+import hmac
+import hashlib
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -10,53 +13,67 @@ class handler(BaseHTTPRequestHandler):
         self.send_header('Access-Control-Allow-Origin', '*')
         self.end_headers()
         
-        # Teste simples sem dependências primeiro
-        response = {
-            "message": "✅ JWT endpoint funcionando no Vercel",
-            "status": "testing",
-            "timestamp": datetime.datetime.now().isoformat(),
-            "test_mode": True
-        }
-        
         try:
-            # Tentar importar JWT
-            import jwt
-            
-            # Se chegou aqui, PyJWT está disponível
+            # Criar JWT simples sem dependências externas
             secret = os.getenv("JWT_SECRET_KEY", "vercel-secret-key-123")
             
+            # Header JWT
+            header = {
+                "alg": "HS256",
+                "typ": "JWT"
+            }
+            
+            # Payload JWT
             payload = {
                 "sub": "test-user-123",
                 "email": "test@example.com",
                 "name": "Test User",
-                "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=1),
-                "iat": datetime.datetime.utcnow()
+                "workspace_id": "test-workspace-456",
+                "role": "admin",
+                "exp": int((datetime.datetime.utcnow() + datetime.timedelta(hours=1)).timestamp()),
+                "iat": int(datetime.datetime.utcnow().timestamp())
             }
             
-            token = jwt.encode(payload, secret, algorithm="HS256")
-            decoded = jwt.decode(token, secret, algorithms=["HS256"])
+            # Codificar em base64
+            header_b64 = base64.urlsafe_b64encode(
+                json.dumps(header, separators=(',', ':')).encode()
+            ).decode().rstrip('=')
             
-            response.update({
-                "message": "✅ JWT token criado com sucesso no Vercel",
+            payload_b64 = base64.urlsafe_b64encode(
+                json.dumps(payload, separators=(',', ':')).encode()
+            ).decode().rstrip('=')
+            
+            # Criar assinatura
+            message = f"{header_b64}.{payload_b64}"
+            signature = hmac.new(
+                secret.encode(),
+                message.encode(),
+                hashlib.sha256
+            ).digest()
+            
+            signature_b64 = base64.urlsafe_b64encode(signature).decode().rstrip('=')
+            
+            # Token JWT completo
+            token = f"{header_b64}.{payload_b64}.{signature_b64}"
+            
+            response = {
+                "message": "✅ JWT token criado com sucesso no Vercel (sem dependências)",
                 "token": token,
                 "payload": payload,
-                "decoded": decoded,
+                "header": header,
+                "token_length": len(token),
+                "method": "native_python",
                 "dependencies_working": True,
-                "test_mode": False
-            })
+                "timestamp": datetime.datetime.now().isoformat()
+            }
             
-        except ImportError:
-            response.update({
-                "message": "❌ PyJWT não disponível",
-                "dependencies_working": False,
-                "import_error": "PyJWT module not found"
-            })
         except Exception as e:
-            response.update({
-                "message": "❌ Erro no JWT",
+            response = {
+                "message": "❌ Erro ao criar JWT",
                 "error": str(e),
-                "error_type": type(e).__name__
-            })
+                "error_type": type(e).__name__,
+                "timestamp": datetime.datetime.now().isoformat()
+            }
         
         self.wfile.write(json.dumps(response, indent=2).encode())
         return
